@@ -1,0 +1,16 @@
+.Rhistory
+.RData
+.Rproj.user/
+.Ruserdata
+.Rproj.user
+.Rprofile
+.Renviron
+.Rproj
+.DS_Store
+
+data
+
+
+# renv (keep lockfile, ignore the library)
+renv/library/
+renv/staging/

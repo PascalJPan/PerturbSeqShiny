@@ -1,0 +1,269 @@
+---
+title: "perturbSeq_shiny – Technical Overview"
+author: "Pascal"
+date: "2025-10-21"
+output: html_document
+---
+
+## Introduction
+
+This document provides a **technical overview** of the `perturbSeq_shiny` application.  
+It describes the app architecture, folder structure, reactivity patterns, performance features, and design conventions.  
+
+> **Note:**  
+> The app should always be started from a **clean R environment** via  
+> ```r
+> source("app.R")
+> ```  
+> or simply running `app.R` from RStudio.  
+> All required packages are loaded within the script.
+
+---
+
+## Folder Structure
+
+````
+
+perturbSeq_shiny/
+├── app.R
+├── data/
+│   ├── TF_lists/
+│   ├── enrichment/
+│   ├── knockdown_efficiency/
+│   ├── expression/
+│   ├── dream_output/
+│   └── ...
+├── R/
+│   ├── helper/           # Small standalone functions (formatting, plotting, logic)
+│   ├── server/           # Server modules (one per tab)
+│   ├── ui/               # UI definitions (only for early tabs)
+│   ├── style/            # Style and reusable UI functions
+│   └── ...
+└── www/
+    └── pngs/             # Static images (species headers, icons)
+
+````
+
+### Folder roles
+
+- **`app.R`** – main entry point; loads all R files and defines global UI + server logic  
+- **`R/helper/`** – functional helpers (e.g., plotting functions, custom formatting, GO analysis logic)  
+- **`R/server/`** – one file per biological analysis tab (e.g., `conservation_server.R`, `enrichment_server.R`)  
+- **`R/ui/`** – modular UIs for the first tabs; later UIs are generated dynamically inside server modules  
+- **`R/style/`** – style helpers (`section_header()`, `styled_plot()`, etc.) and reusable layout components  
+- **`www/`** – static resources (e.g., `Human.png`, `Cynomolgus.png`) used in the header  
+- **`data/`** – preprocessed RDS objects (TF lists, expression data, enrichment results, etc.)
+
+---
+
+## App Architecture
+
+The app is structured as a **modular Shiny application**.
+
+### Initialization
+- `app.R` loads all necessary R files from `R/ui`, `R/server`, `R/helper`, and `R/style`.  
+- All required packages are loaded at the top of the file.  
+- The `colors_app` list defines consistent colors for all modules:
+  ```r
+  colors_app <- list(
+    human      = "#C91C52",
+    cynomolgus = "#009E9A",
+    TF         = "#D62728",
+    DR         = "#FFC300"
+  )
+````
+
+### Module system
+
+Each biological topic (tab) is implemented as a **server module** in `R/server/` with matching UI:
+
+```
+tf_characteristics_server.R
+grna_characteristics_server
+expression_server.R
+knockdown_efficiency_server.R
+enrichment_server.R
+stemness_server.R
+DE_DR_DT_analysis_server.R
+conservation_server.R
+...
+```
+
+Modules are dynamically loaded in `app.R` using:
+
+```r
+smart_tab_loader <- function(input, tab_id, module_id, server_fn, ...) {
+  # Has this module been initialized yet?
+  loaded <- shiny::reactiveVal(FALSE)
+  
+  # Reactive flag: is this tab currently active?
+  is_active <- shiny::reactive({
+    input$tabs == tab_id
+  })
+  
+  # Initialize when the tab is (or becomes) active, but only once
+  shiny::observe({
+    if (is_active() && !loaded()) {
+      server_fn(
+        id = module_id,
+        ...,
+        is_active = is_active  # pass the same reactive to the module
+      )
+      loaded(TRUE)
+    }
+  })
+}
+```
+
+This ensures **lazy loading** — server logic initializes only when its tab becomes active.
+
+---
+
+## Reactive Design and Optimization
+
+### Shared reactivity
+
+* **`selected_tf`** is the global reactive shared across modules.
+* Each module also receives an **`is_active()`** reactive that signals whether the tab is currently visible.
+
+  * This prevents unnecessary computations or re-renders on hidden tabs.
+
+### TF latching
+
+Each module uses a `reactiveVal` called `last_tf_shown`:
+
+```r
+observeEvent(list(selected_tf(), is_active()), {
+  req(is_active())
+  tf <- selected_tf()
+  if (!identical(tf, last_tf_shown())) last_tf_shown(tf)
+})
+```
+
+This ensures plots **only update** when the selected TF changes *and* the tab is active.
+
+### Conditional rendering
+
+* Tabs display either:
+
+  * A **filtered-out message** if the TF was filtered out at any point during the analysis,
+  * The **full tab content**.
+* Implemented with:
+
+  ```r
+  output$content <- renderUI({
+    if (!show_plots()) {
+      div(class="p-4", h3("This TF is filtered out"), p(filter_message()))
+    } else {
+      tagList(...) # full tab body
+    }
+  })
+  ```
+
+### Caching
+
+* Most plots use `bindCache(current_tf())` for **per-TF caching**.
+* This drastically improves responsiveness when switching back to previously viewed TFs.
+
+### Performance controls
+
+* Heavy computations or large plots (e.g., GO term analysis, Gviz, UMAP) are triggered **only after button press**.
+* Example: GO analysis via
+
+  ```r
+  observeEvent(input$starttopgo, { ... })
+  ```
+
+---
+
+## Design and User Interface
+
+### Overall layout
+
+* **Header bar** with TF selector, debug/screenshot buttons, and species images.
+* **Tabs** for each analysis section (`TF Characteristics`, `gRNA Enrichment`, etc.).
+* Built with `tabsetPanel()` for clarity and compactness.
+
+### CSS and styling
+
+* Global styles are defined inline in `app.R` inside the `<head>` section.
+* Additional styling utilities are located in `R/style/`.
+* Key design principles:
+
+  * Responsive layout (tested down to 13” screens)
+  * Distinct color palette (can be changed in app.R):
+
+    * Human: **#C91C52**
+    * Cynomolgus: **#009E9A**
+    * TF highlight: **#D62728**
+    * DR plots: **#FFC300**
+
+### Plot conventions
+
+* **Plotly** used whenever interactivity is helpful.
+* **Static ggplot2** plots used where performance is critical.
+* Placeholders (via `shinycssloaders` or blank `renderPlot`) indicate loading or inactive states.
+* Consistent species labeling through helper functions like `species_header()` and `section_header()`.
+
+### Dynamic behavior
+
+* Many plots and tables are rendered dynamically based on TF and dataset (e.g. downsampled vs. all cells).
+* Conditional UI and waiting circles used for clarity during computation.
+
+---
+
+## Key Features
+
+* **Lazy tab loading** – modules activate only when visible.
+* **TF latch system** – prevents redundant reloads.
+* **Per-TF caching** – fast tab switching.
+* **Filtered TF handling** – displays messages instead of errors.
+* **GO term analysis** – only runs on demand, with progress bars and validation.
+* **Species-aware styling** – colors and headers match human/cynomolgus context.
+* **Interactive visualization** – Plotly plots for exploration, static ggplots for heavy data.
+* **Custom UI components** – reusable helpers in `R/style/`.
+
+---
+
+## Development Notes
+
+* Avoid using `tags` unqualified — always use `shiny::tags`.
+* For GO analysis, inclusion criteria are:
+
+  * ≥10 background genes annotated
+  * ≥2 hits in the selected gene list
+    (adjustable in `go_analysis_smart()` parameters)
+* The UI after `grna_characteristics` is generated **dynamically inside the server** (`renderUI()`).
+* Heavy datasets (like `seu`) are loaded **once** globally to avoid reloading on each TF.
+* Debugging tools:
+
+  * The **Debug** button prints the full `input` structure to the console.
+  * The **Screenshot** button captures the app window via `shinyscreenshot`.
+
+---
+
+## Extending the App
+
+To add a new tab/module:
+
+1. Create a new file in `R/server/`, e.g. `newfeature_server.R`
+2. (Optionally) create a UI in `R/ui/`, or generate it dynamically.
+3. Add a new `tabPanel()` and corresponding `smart_tab_loader()` call in `app.R`.
+4. Use `colors_app` for consistent styling.
+5. Cache render outputs with `bindCache()` when possible.
+
+---
+
+
+---
+
+## Acknowledgements
+
+Developed as part of the **Perturb-Seq cross-species analysis project**,
+focusing on transcription factor perturbations in human and cynomolgus iPSCs.
+
+Data Generation: Fiona Edenhofer, Anita Térmeg, Ines Hellman
+Analysis and Plots: Fiona Edenhofer, Anita Térmeg, Pascal Stümpfl, Ines Hellman
+Shiny Application: Pascal Stümpfl
+---
+
