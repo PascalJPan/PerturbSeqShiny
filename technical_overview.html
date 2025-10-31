@@ -360,16 +360,14 @@ display: none;
 <div id="introduction" class="section level2">
 <h2>Introduction</h2>
 <p>This document provides a <strong>technical overview</strong> of the
-<code>perturbSeq_shiny</code> application.<br />
-It describes the app architecture, folder structure, reactivity
-patterns, performance features, and design conventions.</p>
+<code>perturbSeq_shiny</code> application. It describes the app
+architecture, folder structure, reactivity patterns, performance
+features, and design conventions.</p>
 <blockquote>
-<p><strong>Note:</strong><br />
-The app should always be started from a <strong>clean R
-environment</strong> via</p>
+<p><strong>Note:</strong> Always start the app from a <strong>clean R
+session</strong> via:</p>
 <pre class="r"><code>source(&quot;app.R&quot;)</code></pre>
-<p>or simply running <code>app.R</code> from RStudio.<br />
-All required packages are loaded within the script.</p>
+<p>All required packages are loaded in <code>app.R</code>.</p>
 </blockquote>
 <hr />
 </div>
@@ -386,299 +384,312 @@ perturbSeq_shiny/
 │   ├── dream_output/
 │   └── ...
 ├── R/
-│   ├── helper/           # Small standalone functions (formatting, plotting, logic)
+│   ├── helper/           # Standalone helpers (formatting, plotting, logic)
 │   ├── server/           # Server modules (one per tab)
-│   ├── ui/               # UI definitions (only for early tabs)
-│   ├── style/            # Style and reusable UI functions
-│   └── ...
+│   ├── ui/               # UI definitions (early tabs or shared UIs)
+│   ├── style/            # Style + reusable UI components
+│   └── setup/            # Preprocessing scripts to generate cached RDS files
 └── www/
     └── pngs/             # Static images (species headers, icons)
 </code></pre>
 <div id="folder-roles" class="section level3">
 <h3>Folder roles</h3>
 <ul>
-<li><strong><code>app.R</code></strong> – main entry point; loads all R
-files and defines global UI + server logic<br />
-</li>
-<li><strong><code>R/helper/</code></strong> – functional helpers (e.g.,
-plotting functions, custom formatting, GO analysis logic)<br />
-</li>
-<li><strong><code>R/server/</code></strong> – one file per biological
-analysis tab (e.g., <code>conservation_server.R</code>,
-<code>enrichment_server.R</code>)<br />
-</li>
-<li><strong><code>R/ui/</code></strong> – modular UIs for the first
-tabs; later UIs are generated dynamically inside server modules<br />
-</li>
-<li><strong><code>R/style/</code></strong> – style helpers
-(<code>section_header()</code>, <code>styled_plot()</code>, etc.) and
-reusable layout components<br />
-</li>
-<li><strong><code>www/</code></strong> – static resources (e.g.,
-<code>Human.png</code>, <code>Cynomolgus.png</code>) used in the
-header<br />
-</li>
-<li><strong><code>data/</code></strong> – preprocessed RDS objects (TF
-lists, expression data, enrichment results, etc.)</li>
+<li><p><strong><code>app.R</code></strong> – main entry; sources all
+files and defines global UI + server.</p></li>
+<li><p><strong><code>R/helper/</code></strong> – plotting functions,
+formatting, analysis helpers, etc.</p></li>
+<li><p><strong><code>R/server/</code></strong> – one module per
+biological topic/tab (e.g.,
+<code>conservation_server.R</code>).</p></li>
+<li><p><strong><code>R/ui/</code></strong> – modular UIs for early tabs
+or shared UI fragments.</p></li>
+<li><p><strong><code>R/style/</code></strong> – reusable UI helpers
+(e.g., <code>section_header()</code>,
+<code>styled_plot()</code>).</p></li>
+<li><p><strong><code>R/setup/</code></strong> –
+<strong>precompute</strong> heavy artifacts to speed up app load &amp;
+enforce logic:</p>
+<ul>
+<li><em>Permutation preprocessing</em>: scripts that summarize
+permutation results and save <code>RDS</code> for use by
+Conservation/Permutation modules.</li>
+<li><em>TF filtering information</em>: script that creates
+<code>TF_filter_information.rds</code>, defining which TFs are
+shown/hidden where (critical gating logic).</li>
+</ul></li>
+<li><p><strong><code>www/</code></strong> – static resources (e.g.,
+<code>Human.png</code>, <code>Cynomolgus.png</code>).</p></li>
+<li><p><strong><code>data/</code></strong> – preprocessed
+<code>.rds</code> objects (TF lists, expression, enrichment, DREAM
+outputs, …).</p></li>
 </ul>
 <hr />
 </div>
 </div>
 <div id="app-architecture" class="section level2">
 <h2>App Architecture</h2>
-<p>The app is structured as a <strong>modular Shiny
-application</strong>.</p>
+<p>The app is a <strong>modular Shiny application</strong>.</p>
 <div id="initialization" class="section level3">
 <h3>Initialization</h3>
 <ul>
-<li><p><code>app.R</code> loads all necessary R files from
-<code>R/ui</code>, <code>R/server</code>, <code>R/helper</code>, and
-<code>R/style</code>.<br />
-</p></li>
-<li><p>All required packages are loaded at the top of the file.<br />
-</p></li>
-<li><p>The <code>colors_app</code> list defines consistent colors for
-all modules:</p>
+<li><code>app.R</code> loads packages, defines colors, sources all
+<code>R/ui</code>, <code>R/server</code>, <code>R/helper</code>,
+<code>R/style</code>.</li>
+<li>Global colors:</li>
+</ul>
 <pre class="r"><code>colors_app &lt;- list(
   human      = &quot;#C91C52&quot;,
   cynomolgus = &quot;#009E9A&quot;,
   TF         = &quot;#D62728&quot;,
   DR         = &quot;#FFC300&quot;
-)</code></pre></li>
-</ul>
+)</code></pre>
 </div>
-<div id="module-system" class="section level3">
-<h3>Module system</h3>
-<p>Each biological topic (tab) is implemented as a <strong>server
-module</strong> in <code>R/server/</code> with matching UI:</p>
+<div id="lazy-module-loader" class="section level3">
+<h3>Lazy Module Loader</h3>
+<p>Each tab’s server logic is initialized <strong>only when its tab
+becomes active</strong>:</p>
+<pre class="r"><code>smart_tab_loader &lt;- function(input, tab_id, module_id, server_fn, ...) {
+  loaded &lt;- shiny::reactiveVal(FALSE)
+  is_active &lt;- shiny::reactive({ input$tabs == tab_id })
+  shiny::observe({
+    if (is_active() &amp;&amp; !loaded()) {
+      server_fn(id = module_id, ..., is_active = is_active)
+      loaded(TRUE)
+    }
+  })
+}</code></pre>
+</div>
+<div id="module-list-examples" class="section level3">
+<h3>Module List (examples)</h3>
 <pre><code>tf_characteristics_server.R
-grna_characteristics_server
+grna_characteristics_server.R
 expression_server.R
 knockdown_efficiency_server.R
 enrichment_server.R
 stemness_server.R
 DE_DR_DT_analysis_server.R
 conservation_server.R
-...</code></pre>
-<p>Modules are dynamically loaded in <code>app.R</code> using:</p>
-<pre class="r"><code>smart_tab_loader &lt;- function(input, tab_id, module_id, server_fn, ...) {
-  # Has this module been initialized yet?
-  loaded &lt;- shiny::reactiveVal(FALSE)
-  
-  # Reactive flag: is this tab currently active?
-  is_active &lt;- shiny::reactive({
-    input$tabs == tab_id
-  })
-  
-  # Initialize when the tab is (or becomes) active, but only once
-  shiny::observe({
-    if (is_active() &amp;&amp; !loaded()) {
-      server_fn(
-        id = module_id,
-        ...,
-        is_active = is_active  # pass the same reactive to the module
-      )
-      loaded(TRUE)
-    }
-  })
-}</code></pre>
-<p>This ensures <strong>lazy loading</strong> — server logic initializes
-only when its tab becomes active.</p>
+permutation_server.R</code></pre>
 <hr />
 </div>
 </div>
-<div id="reactive-design-and-optimization" class="section level2">
-<h2>Reactive Design and Optimization</h2>
+<div id="reactive-design-optimization" class="section level2">
+<h2>Reactive Design &amp; Optimization</h2>
 <div id="shared-reactivity" class="section level3">
-<h3>Shared reactivity</h3>
+<h3>Shared Reactivity</h3>
 <ul>
-<li><p><strong><code>selected_tf</code></strong> is the global reactive
-shared across modules.</p></li>
-<li><p>Each module also receives an
-<strong><code>is_active()</code></strong> reactive that signals whether
-the tab is currently visible.</p>
-<ul>
-<li>This prevents unnecessary computations or re-renders on hidden
-tabs.</li>
-</ul></li>
+<li><code>selected_tf</code> is global and passed into modules.</li>
+<li>Each module also receives <code>is_active()</code> so hidden tabs
+don’t recompute.</li>
 </ul>
 </div>
 <div id="tf-latching" class="section level3">
-<h3>TF latching</h3>
-<p>Each module uses a <code>reactiveVal</code> called
-<code>last_tf_shown</code>:</p>
-<pre class="r"><code>observeEvent(list(selected_tf(), is_active()), {
+<h3>TF Latching</h3>
+<p>Modules keep the <strong>last shown TF</strong> while the tab is
+active:</p>
+<pre class="r"><code>last_tf_shown &lt;- reactiveVal(NULL)
+observeEvent(list(selected_tf(), is_active()), {
   req(is_active())
   tf &lt;- selected_tf()
   if (!identical(tf, last_tf_shown())) last_tf_shown(tf)
-})</code></pre>
-<p>This ensures plots <strong>only update</strong> when the selected TF
-changes <em>and</em> the tab is active.</p>
+}, ignoreInit = FALSE)
+current_tf &lt;- reactive({ req(last_tf_shown()); last_tf_shown() })</code></pre>
 </div>
-<div id="conditional-rendering" class="section level3">
-<h3>Conditional rendering</h3>
-<ul>
-<li><p>Tabs display either:</p>
-<ul>
-<li>A <strong>filtered-out message</strong> if the TF was filtered out
-at any point during the analysis,</li>
-<li>The <strong>full tab content</strong>.</li>
-</ul></li>
-<li><p>Implemented with:</p>
+<div id="conditional-rendering-gating" class="section level3">
+<h3>Conditional Rendering (Gating)</h3>
+<p>Modules consult <code>TF_filter_information.rds</code> to decide if
+plots should render:</p>
 <pre class="r"><code>output$content &lt;- renderUI({
   if (!show_plots()) {
     div(class=&quot;p-4&quot;, h3(&quot;This TF is filtered out&quot;), p(filter_message()))
   } else {
-    tagList(...) # full tab body
+    tagList( ... ) # full body
   }
-})</code></pre></li>
-</ul>
+})</code></pre>
 </div>
 <div id="caching" class="section level3">
 <h3>Caching</h3>
-<ul>
-<li>Most plots use <code>bindCache(current_tf())</code> for
-<strong>per-TF caching</strong>.</li>
-<li>This drastically improves responsiveness when switching back to
-previously viewed TFs.</li>
-</ul>
+<p>Use <code>bindCache(current_tf())</code> for plot/table outputs to
+speed up TF switching.</p>
 </div>
 <div id="performance-controls" class="section level3">
-<h3>Performance controls</h3>
-<ul>
-<li><p>Heavy computations or large plots (e.g., GO term analysis, Gviz,
-UMAP) are triggered <strong>only after button press</strong>.</p></li>
-<li><p>Example: GO analysis via</p>
-<pre class="r"><code>observeEvent(input$starttopgo, { ... })</code></pre></li>
-</ul>
+<h3>Performance Controls</h3>
+<p>Expensive tasks (e.g., GO terms, Gviz) run on <strong>explicit button
+clicks</strong> to avoid unnecessary computation.</p>
 <hr />
 </div>
 </div>
-<div id="design-and-user-interface" class="section level2">
-<h2>Design and User Interface</h2>
-<div id="overall-layout" class="section level3">
-<h3>Overall layout</h3>
+<div id="design-user-interface" class="section level2">
+<h2>Design &amp; User Interface</h2>
+<div id="layout" class="section level3">
+<h3>Layout</h3>
 <ul>
-<li><strong>Header bar</strong> with TF selector, debug/screenshot
-buttons, and species images.</li>
-<li><strong>Tabs</strong> for each analysis section
-(<code>TF Characteristics</code>, <code>gRNA Enrichment</code>,
-etc.).</li>
-<li>Built with <code>tabsetPanel()</code> for clarity and
-compactness.</li>
+<li>Sticky header with TF selector, debug/screenshot actions, species
+images.</li>
+<li><code>tabsetPanel()</code> for each analysis section.</li>
 </ul>
 </div>
-<div id="css-and-styling" class="section level3">
-<h3>CSS and styling</h3>
+<div id="css-styling" class="section level3">
+<h3>CSS &amp; Styling</h3>
 <ul>
-<li><p>Global styles are defined inline in <code>app.R</code> inside the
-<code>&lt;head&gt;</code> section.</p></li>
-<li><p>Additional styling utilities are located in
-<code>R/style/</code>.</p></li>
-<li><p>Key design principles:</p>
+<li><p>Global CSS lives in <code>&lt;head&gt;</code> within
+<code>app.R</code> plus helpers in <code>R/style/</code>.</p></li>
+<li><p>Principles:</p>
 <ul>
-<li><p>Responsive layout (tested down to 13” screens)</p></li>
-<li><p>Distinct color palette (can be changed in app.R):</p>
-<ul>
-<li>Human: <strong>#C91C52</strong></li>
-<li>Cynomolgus: <strong>#009E9A</strong></li>
-<li>TF highlight: <strong>#D62728</strong></li>
-<li>DR plots: <strong>#FFC300</strong></li>
-</ul></li>
+<li>Responsive down to typical 13” screens.</li>
+<li>Consistent color palette (<code>colors_app</code>).</li>
+<li>Plotly for exploration; ggplot2 where performance matters.</li>
 </ul></li>
 </ul>
 </div>
 <div id="plot-conventions" class="section level3">
-<h3>Plot conventions</h3>
+<h3>Plot Conventions</h3>
 <ul>
-<li><strong>Plotly</strong> used whenever interactivity is helpful.</li>
-<li><strong>Static ggplot2</strong> plots used where performance is
-critical.</li>
-<li>Placeholders (via <code>shinycssloaders</code> or blank
-<code>renderPlot</code>) indicate loading or inactive states.</li>
-<li>Consistent species labeling through helper functions like
-<code>species_header()</code> and <code>section_header()</code>.</li>
-</ul>
-</div>
-<div id="dynamic-behavior" class="section level3">
-<h3>Dynamic behavior</h3>
-<ul>
-<li>Many plots and tables are rendered dynamically based on TF and
-dataset (e.g. downsampled vs. all cells).</li>
-<li>Conditional UI and waiting circles used for clarity during
-computation.</li>
+<li>Plotly with tooltips/hover where helpful.</li>
+<li>Static ggplot for heavy histograms/violin/beeswarm where speed
+matters.</li>
+<li>Consistent species labeling via <code>species_header()</code> /
+<code>section_header()</code> helpers.</li>
 </ul>
 <hr />
 </div>
 </div>
-<div id="key-features" class="section level2">
-<h2>Key Features</h2>
+<div id="info-buttons-bottom-sheet-help" class="section level2">
+<h2>Info Buttons (Bottom-Sheet Help)</h2>
+<p>The app uses a <strong>global bottom sheet</strong>
+(<code>info_sheet_ui()</code>) and <strong>per-module info
+buttons</strong> (<code>actionButton</code>) to show contextual
+help.</p>
+<div id="bottom-sheet-included-in-global-ui" class="section level3">
+<h3>1) Bottom sheet included in global UI</h3>
+<p>In <code>app.R</code>:</p>
+<pre class="r"><code>useShinyjs()
+info_sheet_ui(
+  background_color_button = colors_app$cynomolgus,   # button background
+  text_color_button       = &quot;#ffffff&quot;,               # button text/icon
+  sheet_shadow_color      = &quot;rgba(0,158,154,0.25)&quot;   # shadow with transparency
+)</code></pre>
+</div>
+<div id="add-a-new-info-button-ui" class="section level3">
+<h3>2) Add a new info button (UI)</h3>
+<p>Inside any module UI / <code>renderUI</code>:</p>
+<pre class="r"><code>info_button_right(ns, &quot;my_info_btn&quot;) </code></pre>
+<p>“my_info_btn” is the identifier which needs to be different for all
+info buttons.</p>
+</div>
+<div id="show-the-sheet-on-click-server" class="section level3">
+<h3>3) Show the sheet on click (Server)</h3>
+<p><strong>Plain text:</strong></p>
+<pre class="r"><code>observeEvent(input$my_info_btn, {
+  session$sendCustomMessage(&quot;show-info-sheet&quot;, list(
+    title = &quot;About this panel&quot;,
+    text  = &quot;Short explanation of what the panel shows.&quot;
+  ))
+})</code></pre>
+<p><strong>HTML content:</strong></p>
+<pre class="r"><code>observeEvent(input$my_info_btn, {
+  session$sendCustomMessage(&quot;show-info-sheet&quot;, list(
+    title = &quot;About this panel&quot;,
+    html  = &quot;&lt;p&gt;&lt;b&gt;Tip:&lt;/b&gt; Hover points for values.&lt;br&gt;Lower is better.&lt;/p&gt;&quot;
+  ))
+})</code></pre>
+</div>
+<div id="optional-helper-to-avoid-repetition" class="section level3">
+<h3>4) Optional helper to avoid repetition</h3>
+<p>If you included a helper like:</p>
+<pre class="r"><code>info_button_bind &lt;- function(session, input, btn_id, title, text = NULL, html = NULL) {
+  observeEvent(input[[btn_id]], {
+    payload &lt;- list(title = title)
+    if (!is.null(html)) payload$html &lt;- if (is.function(html)) html() else html
+    if (!is.null(text)) payload$text &lt;- if (is.function(text)) text() else text
+    session$sendCustomMessage(&quot;show-info-sheet&quot;, payload)
+  }, ignoreInit = TRUE)
+}</code></pre>
+<p>…then call:</p>
+<pre class="r"><code>info_button_bind(
+  session, input,
+  btn_id = &quot;my_info_btn&quot;,
+  title  = &quot;About this panel&quot;,
+  html   = &quot;&lt;p&gt;Custom &lt;i&gt;HTML&lt;/i&gt; here.&lt;/p&gt;&quot;
+)</code></pre>
+</div>
+<div id="changing-colors" class="section level3">
+<h3>5) Changing colors</h3>
 <ul>
-<li><strong>Lazy tab loading</strong> – modules activate only when
-visible.</li>
-<li><strong>TF latch system</strong> – prevents redundant reloads.</li>
-<li><strong>Per-TF caching</strong> – fast tab switching.</li>
-<li><strong>Filtered TF handling</strong> – displays messages instead of
-errors.</li>
-<li><strong>GO term analysis</strong> – only runs on demand, with
-progress bars and validation.</li>
-<li><strong>Species-aware styling</strong> – colors and headers match
-human/cynomolgus context.</li>
-<li><strong>Interactive visualization</strong> – Plotly plots for
-exploration, static ggplots for heavy data.</li>
-<li><strong>Custom UI components</strong> – reusable helpers in
-<code>R/style/</code>.</li>
+<li><strong>Global palette</strong> in <code>app.R</code>:</li>
 </ul>
+<pre class="r"><code>colors_app &lt;- list(
+  human      = &quot;#C91C52&quot;,
+  cynomolgus = &quot;#009E9A&quot;,
+  TF         = &quot;#D62728&quot;,
+  DR         = &quot;#FFC300&quot;
+)</code></pre>
+</div>
+</div>
+<div id="data-dependencies-setup-scripts-rsetup" class="section level2">
+<h2>Data Dependencies &amp; Setup Scripts (<code>R/setup/</code>)</h2>
+<p>These scripts <strong>precompute</strong> artifacts to speed up the
+app and define availability logic:</p>
+<ul>
+<li><p><strong>Permutation preprocessing</strong></p>
+<ul>
+<li>Aggregates permutation results (e.g., distributions, summary
+stats).</li>
+<li>Saves RDS outputs used by Conservation/Permutation modules to avoid
+recomputing on app load.</li>
+</ul></li>
+<li><p><strong>TF filtering information</strong></p>
+<ul>
+<li>Generates <code>data/TF_lists/TF_filter_information.rds</code>.</li>
+<li>Encodes which TFs are available in which modules and why others are
+filtered.</li>
+<li>This file is <strong>required</strong> for the gating logic that
+decides whether a module shows plots or a “TF filtered out”
+message.</li>
+</ul></li>
+</ul>
+<blockquote>
+<p>Re-run these scripts whenever underlying raw data changes, then
+restart the app.</p>
+</blockquote>
 <hr />
 </div>
 <div id="development-notes" class="section level2">
 <h2>Development Notes</h2>
 <ul>
-<li><p>Avoid using <code>tags</code> unqualified — always use
-<code>shiny::tags</code>.</p></li>
-<li><p>For GO analysis, inclusion criteria are:</p>
+<li><p>Prefer <code>shiny::tags</code> instead of bare
+<code>tags</code>.</p></li>
+<li><p>GO analysis thresholds (example defaults):</p>
 <ul>
 <li>≥10 background genes annotated</li>
-<li>≥2 hits in the selected gene list (adjustable in
-<code>go_analysis_smart()</code> parameters)</li>
+<li>≥2 list hits (adjustable in <code>go_analysis_smart()</code>).</li>
 </ul></li>
-<li><p>The UI after <code>grna_characteristics</code> is generated
-<strong>dynamically inside the server</strong>
-(<code>renderUI()</code>).</p></li>
-<li><p>Heavy datasets (like <code>seu</code>) are loaded
-<strong>once</strong> globally to avoid reloading on each TF.</p></li>
-<li><p>Debugging tools:</p>
+<li><p>UIs after <code>grna_characteristics</code> are often generated
+via <code>renderUI()</code> inside their modules.</p></li>
+<li><p>Heavy objects are loaded once (globally) and reused.</p></li>
+<li><p>Debugging:</p>
 <ul>
-<li>The <strong>Debug</strong> button prints the full <code>input</code>
-structure to the console.</li>
-<li>The <strong>Screenshot</strong> button captures the app window via
-<code>shinyscreenshot</code>.</li>
+<li><strong>Debug</strong> button prints
+<code>str(reactiveValuesToList(input))</code>.</li>
+<li><strong>Screenshot</strong> via
+<code>shinyscreenshot::screenshot()</code>.</li>
 </ul></li>
 </ul>
 <hr />
 </div>
-<div id="extending-the-app" class="section level2">
-<h2>Extending the App</h2>
-<p>To add a new tab/module:</p>
-<ol style="list-style-type: decimal">
-<li>Create a new file in <code>R/server/</code>,
-e.g. <code>newfeature_server.R</code></li>
-<li>(Optionally) create a UI in <code>R/ui/</code>, or generate it
-dynamically.</li>
-<li>Add a new <code>tabPanel()</code> and corresponding
-<code>smart_tab_loader()</code> call in <code>app.R</code>.</li>
-<li>Use <code>colors_app</code> for consistent styling.</li>
-<li>Cache render outputs with <code>bindCache()</code> when
-possible.</li>
-</ol>
-<hr />
-<hr />
-</div>
-<div id="acknowledgements" class="section level2">
-<h2>Acknowledgements</h2>
-<p>Developed as part of the <strong>Perturb-Seq cross-species analysis
-project</strong>, focusing on transcription factor perturbations in
-human and cynomolgus iPSCs.</p>
+<div id="next-steps" class="section level2">
+<h2>Next Steps</h2>
+<ul>
+<li>Continue permutation analysis.</li>
+<li>Do checks to ensure permutation results are reasonable and
+reliable.</li>
+<li>Decide on <strong>one</strong> conservation metric; remove
+unnecessary metrics and filtering options from the app.</li>
+<li>Remove the <strong>Debug</strong> button before publishing.</li>
+<li>Add information buttons in all necessary locations (right-aligned,
+with concise help text/HTML).</li>
+</ul>
 <hr />
 </div>
 

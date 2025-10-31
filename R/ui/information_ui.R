@@ -6,7 +6,7 @@
         width = 12,
         h2("Information"),
         h3("About the Data"),
-        p("This app presents results from one of the first cross-species single-cell CRISPRi Perturb-seq screens,", br(),
+        p("This app presents results from one of the first cross-species single-cell CRISPRi screens,", br(),
            "comparing regulatory responses of 94 transcription factors (TFs)", br(), "
            in human (Homo sapiens) and cynomolgus macaque (Macaca fascicularis) induced pluripotent stem cells (iPSCs). ", br(), "
            The dataset contains 277,000 high-quality single-cell transcriptomes.", br(), "
@@ -24,13 +24,11 @@
           shiny::tags$li("DE and DR Analysis – Volcano plots, logFC comparisons, and GO term enrichment results"),
           shiny::tags$li("Conservation – Model fits, TF divergence ranking, and grouping by selection rationale")
         ),
-        
-        
         h3("Links"),
         p(
-          "📂 ", a("GitHub repository", href = "GITHUB_LINK", target = "_blank"),
+          "📂 ", a("GitHub repository", href = "GITHUB_LINK", target = "_blank"), "(still needs to be added)",
           br(),
-          "📊 ", a("Data download", href = "DATA_LINK", target = "_blank")
+          "📊 ", a("Data download", href = "DATA_LINK", target = "_blank"), "(still needs to be added)",
         ),
         h3("Contact"),
         p(

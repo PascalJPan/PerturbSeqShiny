@@ -76,7 +76,7 @@ make_gRNA_gviz <- function(
   # Nanopore read track
   nanopore_track <- Gviz::AlignmentsTrack(
     nanoporeBAM, chromosome = chr, genome = gen,
-    name = "Nanopore\nreads",
+    name = "Nanopore reads\nfrom iPSCs",
     height = 0.2, coverageHeight = 0.1, minCoverageHeight = 0,
     window = -1, windowSize = 100,
     cex.title = 0.8, col.axis = "black", col.title = "black"
@@ -134,7 +134,7 @@ make_gRNA_gviz <- function(
       
       Gviz::AnnotationTrack(
         gr, chromosome = chr, genome = gen,
-        name = if (n == "TRUE") "gRNAs (final)" else "gRNAs (other)",
+        name = if (n == "TRUE") "gRNAs (-)" else "gRNAs",
         shape = "line", stacking = "dense",
         col = col_alpha, fill = col_alpha,
         cex.title = 0.8, col.axis = "black", col.title = "black"

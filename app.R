@@ -24,8 +24,11 @@ library(ggpp)
 library(RColorBrewer)
 library(ggblend)
 library(scales)
+library(scales)
 
 here::i_am("app.R")
+
+options(shiny.fullstacktrace = TRUE, shiny.sanitize.errors = FALSE)
 
 # Load all UI, server and helper functions
 folders <- c("R/ui", "R/server", "R/helper", "R/style")
@@ -56,6 +59,11 @@ colors_app <- list(
 ui <- fluidPage(
   theme = shinytheme("cosmo"),
   useShinyjs(),
+  info_sheet_ui(
+    background_color_button = colors_app$cynomolgus, 
+    text_color_button = "#fff",        
+    sheet_shadow_color = scales::alpha(colors_app$cynomolgus, 0.75)  
+  ),
   
   # ---- Head (CSS variables + styles) ----
   shiny::tags$head(
@@ -68,6 +76,7 @@ ui <- fluidPage(
         --second-color: {colors_app$human};
         --color-human: {colors_app$human};
         --color-cynomolgus: {colors_app$cynomolgus};
+        --color-DR: {colors_app$DR};
       }}
     "))),
     
@@ -98,6 +107,10 @@ ui <- fluidPage(
       .full-bleed-header .selectize-control.single .selectize-input::before {
         color: #ffffff;
         opacity: 1;
+      }
+      
+      .full-bleed-header .selectize-input input {
+        color: #ffffff !important;   /* or whatever color you want */
       }
 
       .full-bleed-header .selectize-input input::placeholder {
@@ -274,7 +287,8 @@ ui <- fluidPage(
       tabPanel("Cell Type and Stemness",      value = "stemness", mini_ui("stemness")),
       tabPanel("gRNA Enrichment",             value = "enrich",   mini_ui("enrichment")),
       tabPanel("DE and DR Analysis",          value = "dedrdt",   mini_ui("dedrdtanalysis")),
-      tabPanel("Conservation",                value = "cons",     mini_ui("conservation"))
+      tabPanel("Conservation",                value = "cons",     mini_ui("conservation")),
+      tabPanel(".",                value = "perm",     mini_ui("permutation"))
     )
   )
 )
@@ -300,6 +314,11 @@ server <- function(input, output, session) {
   observeEvent(input$debug, {
     iv <- reactiveValuesToList(input)
     cat(paste(capture.output(str(iv)), collapse = "\n"), "\n")
+  })
+  
+  observeEvent(input$debug, {
+    session$sendCustomMessage("show-info-sheet",
+                              list(title = "Test", text = "Hello from debug button"))
   })
   
   # Screenshot button
@@ -346,6 +365,11 @@ server <- function(input, output, session) {
   smart_tab_loader(
     input, tab_id = "cons", module_id = "conservation",
     server_fn = conservation_server, selected_tf = selected_tf, colors_app = colors_app
+  )
+  
+  smart_tab_loader(
+    input, tab_id = "perm", module_id = "permutation",
+    server_fn = permutation_server, selected_tf = selected_tf, colors_app = colors_app
   )
 }
 

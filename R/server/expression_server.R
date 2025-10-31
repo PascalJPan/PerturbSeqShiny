@@ -2,7 +2,9 @@ expression_server <- function(id, selected_tf, is_active, colors_app) {
   # One-time loads
   TF_filter_information  <- readRDS(here("data", "TF_lists", "TF_filter_information.rds"))
   cell_numbers_per_gRNA  <- readRDS(here("data", "enrichment", "cell_numbers_per_gRNA.rds"))
-  expr                   <- readRDS(here("data", "expression", "expr.rds"))
+  cell_numbers_per_gRNA_and_individual  <- readRDS(here("data", "enrichment", "cell_numbers_per_gRNA_and_individual.rds"))
+  ctrl_gene_stats_by_species        <- readRDS(here("data", "expression", "ctrl_gene_stats_by_species.rds"))
+  
   
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
@@ -61,27 +63,53 @@ expression_server <- function(id, selected_tf, is_active, colors_app) {
                 shiny::tags$p("Total Cells: ", textOutput(ns("cynomolgus_cell_count"), inline = TRUE)),
                 styled_plotly_plot(ns("cell_count_per_grna_cynomolgus"), height = "70vh"),
                 div(class = "species-spacer")
-              )
+              ),
+              info_button_right(ns, "cn_info_btn")
             ),
             column(
               width = 12,
-              #style = "margin-bottom: 50px;",
               section_header("Baseline expression of TF in iPSCs"),
+
               column(
                 width = 6,
                 species_header("Human"),
-                styled_plot(ns("iPSCs_expr_human"), height = "70vh")
+                styled_plot(ns("iPSCs_expr_percent_human"), height = "35vh"),
               ),
               column(
                 width = 6,
                 species_header("Cynomolgus"),
-                styled_plot(ns("iPSCs_expr_cynomolgus"), height = "70vh")
-              )
+                styled_plot(ns("iPSCs_expr_percent_cynomolgus"), height = "35vh"),
+              ),
+              column(
+                width = 6,
+                species_header("Human"),
+                styled_plot(ns("iPSCs_expr_mean_human"), height = "35vh")
+              ),
+              column(
+                width = 6,
+                species_header("Cynomolgus"),
+                styled_plot(ns("iPSCs_expr_mean_cynomolgus"), height = "35vh")
+              ),
+              info_button_right(ns, "expr_info_btn")
             )
           )
         )
       }
     })
+    
+    info_button_bind(
+      session, input,
+      btn_id = "cn_info_btn",
+      title  = "Cell numbers",
+      text   = "The cell numbers per gRNA are shown before filtering. An exclusion criteria afterwards was that... "
+    )
+    
+    info_button_bind(
+      session, input,
+      btn_id = "expr_info_btn",
+      title  = "Expression in iPSCs",
+      html   = "The expression of the <i>selected TF</i> is shown in comparison to the expression of all TFs from ... "
+    )
     
     # Small text summaries
     output$human_cell_count <- renderText({
@@ -92,7 +120,7 @@ expression_server <- function(id, selected_tf, is_active, colors_app) {
     })
     
     output$cynomolgus_cell_count <- renderText({
-      cn <- cell_numbers_per_gRNA %>%
+      cn <- cell_numbers_per_gRNA_and_individual %>%
         dplyr::filter(perturbed_TF == current_tf(), species == "cynomolgus") %>%
         dplyr::summarize(cell_number_cynomolgus = sum(cell_count), .groups = "drop")
       as.character(cn$cell_number_cynomolgus)
@@ -102,25 +130,37 @@ expression_server <- function(id, selected_tf, is_active, colors_app) {
     output$cell_count_per_grna_human <- plotly::renderPlotly({
       req(show_plots())
       tf <- current_tf()
-      cell_number_barplot(cell_numbers_per_gRNA, tf, "human")
+      cell_number_barplot(cell_numbers_per_gRNA_and_individual, tf, "human", split_by_individual = TRUE)
     }) %>% bindCache(current_tf())
     
     output$cell_count_per_grna_cynomolgus <- plotly::renderPlotly({
       req(show_plots())
       tf <- current_tf()
-      cell_number_barplot(cell_numbers_per_gRNA, tf, "cynomolgus")
+      cell_number_barplot(cell_numbers_per_gRNA_and_individual, tf, "cynomolgus", split_by_individual = TRUE)
     }) %>% bindCache(current_tf())
     
-    output$iPSCs_expr_human <- renderPlot({
+    output$iPSCs_expr_percent_human <- renderPlot({
       req(show_plots())
       tf <- current_tf()
-      iPSCs_expr_hist_plot(expr, tf, "human", color = colors_app$human)
+      iPSCs_expr_hist_plot(ctrl_gene_stats_by_species, tf, "human", x_col = "frac_expr", x_label = "Percent of cells", color = colors_app$human)
     }) %>% bindCache(current_tf())
     
-    output$iPSCs_expr_cynomolgus <- renderPlot({
+    output$iPSCs_expr_percent_cynomolgus <- renderPlot({
       req(show_plots())
       tf <- current_tf()
-      iPSCs_expr_hist_plot(expr, tf, "cynomolgus", color = colors_app$cynomolgus)
+      iPSCs_expr_hist_plot(ctrl_gene_stats_by_species, tf, "cynomolgus", x_col = "frac_expr", x_label = "Percent of cells", color = colors_app$cynomolgus)
+    }) %>% bindCache(current_tf())
+    
+    output$iPSCs_expr_mean_human <- renderPlot({
+      req(show_plots())
+      tf <- current_tf()
+      iPSCs_expr_hist_plot(ctrl_gene_stats_by_species, tf, "human", x_col = "mean_count", x_label = "Mean expression", percent_x_scale = FALSE, color = colors_app$human)
+    }) %>% bindCache(current_tf())
+    
+    output$iPSCs_expr_mean_cynomolgus <- renderPlot({
+      req(show_plots())
+      tf <- current_tf()
+      iPSCs_expr_hist_plot(ctrl_gene_stats_by_species, tf, "cynomolgus", x_col = "mean_count", x_label = "Mean expression", percent_x_scale = FALSE, color = colors_app$cynomolgus)
     }) %>% bindCache(current_tf())
   })
 }

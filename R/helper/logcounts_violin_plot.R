@@ -89,6 +89,9 @@ logcounts_violin_plot <- function(
     theme(
       plot.title = element_text(face = "bold"),
       axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+      #axis.text.y = element_text(angle = 90),
       panel.grid.minor = element_blank()
-    ) 
+    ) +
+    coord_flip() +
+    theme(axis.text.x = element_text(angle = 0, hjust = 1))
 }

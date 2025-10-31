@@ -45,7 +45,7 @@ add_con_score_metrics_simplified <- function(permutation_outputs_df, downsampled
     mutate(sm500_fix_score = sm500_fix_obs) %>% 
     mutate(sm1000_fix_score = sm1000_fix_obs) %>% 
     mutate(pe500_fix_score = pe500_fix_obs) %>% 
-    mutate(pe1000_fix_score = pe1000_fix_obs)
+    mutate(pe1000_fix_score = pe1000_fix_obs) 
     
     
     # Linear models

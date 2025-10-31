@@ -7,8 +7,8 @@ plot_species_enrichment <- function(df, selected_TF, color) {
       perturbed_TF = ifelse(perturbed_TF == "NT_control", "cntrl", perturbed_TF),
       highlight = perturbed_TF == selected_TF,
       enrichment = case_when(
-        enrichment %in% sort(enrichment)[1:5] ~ "depleted",
-        enrichment %in% sort(enrichment, decreasing = TRUE)[1:5] ~ "enriched",
+        enrichment %in% sort(enrichment)[1:5] ~ "top 5 depleted",
+        enrichment %in% sort(enrichment, decreasing = TRUE)[1:5] ~ "top 5 enriched",
         TRUE ~ "none"
       ),
       tooltip = sprintf(
@@ -40,7 +40,7 @@ plot_species_enrichment <- function(df, selected_TF, color) {
       show.legend = TRUE
     ) +
     
-    scale_fill_manual(values = c(depleted="indianred2", enriched="chartreuse4", none="black"),
+    scale_fill_manual(values = c("top 5 depleted"="indianred2", "top 5 enriched"="chartreuse4", none="black"),
                       name = "") +
     scale_color_manual(values = c(selected = color), name = "Category") +
     

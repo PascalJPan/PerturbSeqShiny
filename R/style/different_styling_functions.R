@@ -24,6 +24,13 @@ species_header <- function(title, color_preset = NULL) {
       style = "margin-top:20px; color:var(--color-cynomolgus); "
     )
     
+  } else if (!is.null(color_preset) && color_preset == "DR") {
+    shiny::tags$h3(
+      title,
+      class = "module-section-title",
+      style = "margin-top:20px; color:var(--color-DR); "
+    )
+    
   } else {
     stop(sprintf("This color preset '%s' is not available.", color_preset))
   }

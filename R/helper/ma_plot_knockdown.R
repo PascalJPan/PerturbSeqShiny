@@ -26,8 +26,8 @@ ma_plot_knockdown <- function(
       .pt_text = paste0(
         "TF: ", .tf,
         if (has_grna) paste0("\n", grna_col, ": ", .gr) else "",
-        "\nmean expr (control): ", signif(.x, 4),
-        "\nlog2FC: ", signif(.y, 4),
+        "\nmean expr (control): ", round(.x, 2),
+        "\nlog2FC: ", round(.y, 2),
         "\nselected TF: ", .highlight
       )
     )
@@ -49,9 +49,19 @@ ma_plot_knockdown <- function(
       aes(x = .x, xend = .x, y = min_y, yend = max_y),
       linewidth = seg_linewidth
     ) +
+    # non-highlighted points
     geom_point(
+      data = df %>% filter(!.highlight),
       aes(x = .x, y = .y, color = .highlight, text = .pt_text),
-      size = point_size, alpha = point_alpha
+      size = point_size,
+      alpha = point_alpha
+    ) +
+    # highlighted points (full opacity, bigger)
+    geom_point(
+      data = df %>% filter(.highlight),
+      aes(x = .x, y = .y, color = .highlight, text = .pt_text),
+      size = point_size * 2.2,   # adjust multiplier to taste
+      alpha = 1
     ) +
     scale_color_manual(
       values = c("TRUE" = highlight_color, "FALSE" = other_color),
@@ -59,7 +69,7 @@ ma_plot_knockdown <- function(
     ) +
     theme_bw(base_size = base_size) +
     xlab("mean expression\n(control)") +
-    ylab("log2FC\n(perturbed VS control)") +
+    ylab("log\u2082FC (perturbed vs control)") +
     geom_hline(yintercept = 0, linetype = "dashed", color = "grey50", linewidth = 0.2) +
     theme(
       panel.spacing = unit(0.2, "lines"),
@@ -69,5 +79,5 @@ ma_plot_knockdown <- function(
   })
   
   ggplotly(p, tooltip = "text") %>%
-    layout(showlegend = FALSE)
+    layout(showlegend = FALSE) # yaxis = list(title = "log<sub>2</sub>FC (perturbed vs control)")
 }

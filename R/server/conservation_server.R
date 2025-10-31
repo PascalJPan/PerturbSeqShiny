@@ -48,7 +48,7 @@ conservation_server <- function(id, selected_tf, is_active, colors_app) {
           # Floating control panel
           shiny::tags$div(
             style = paste(
-              "position:fixed; top:50vh; left:20px; width:18vw; z-index:1050;",
+              "position:fixed; top:25vh; left:20px; width:18vw; z-index:100;",
               "background:white; padding:15px; border:1px solid #ddd;",
               "border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.1);"
             ),
@@ -126,6 +126,8 @@ conservation_server <- function(id, selected_tf, is_active, colors_app) {
     # 5) Small info text
     output$n_tfs_kept <- renderText({
       req(is_active(), show_plots(), input$de_union_filter)
+      
+      
       n_tfs <- TF_ds_summarised_metrics %>%
         dplyr::filter(permuted == FALSE, n_DE_union >= input$de_union_filter) %>%
         dplyr::distinct(target_TF) %>%

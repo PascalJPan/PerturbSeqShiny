@@ -27,6 +27,13 @@ DE_DR_DT_analysis_server <- function(id, selected_tf, is_active, colors_app) {
     })
     
     # 2) Filter gate + message (F3 for all_cells, F4 for downsampled)
+    
+    # dataset toggle is not even shown when the TF was filtered out prior to downsampling
+    show_dataset_toggle <- reactive({
+      req(current_tf())
+      is_TF_not_filtered_out(TF_filter_information, current_tf(), "F3")
+    })
+    
     show_plots <- reactive({
       req(current_tf())
       flag <- if (dataset_choice() == "all_cells") "F3" else "F4"
@@ -34,8 +41,8 @@ DE_DR_DT_analysis_server <- function(id, selected_tf, is_active, colors_app) {
     })
     
     filter_message <- reactive({
-      m <- TF_filter_information |>
-        dplyr::filter(TF == current_tf()) |>
+      m <- TF_filter_information  %>% 
+        dplyr::filter(TF == current_tf())  %>% 
         dplyr::pull(filter_message)
       if (length(m) == 0) "No information available for this TF." else m[1]
     })
@@ -44,6 +51,9 @@ DE_DR_DT_analysis_server <- function(id, selected_tf, is_active, colors_app) {
     output$content <- renderUI({
       req(current_tf())
       shiny::tagList(
+        if (!show_dataset_toggle()) {
+          div(class = "p-4", h3("This TF is filtered out"), p(filter_message()))
+        } else {
         # Dataset toggle
         div(
           class = "p-3",
@@ -61,10 +71,12 @@ DE_DR_DT_analysis_server <- function(id, selected_tf, is_active, colors_app) {
               )
             )
           )
-        ),
+        )},
         # Body
         if (!show_plots()) {
+          if (show_dataset_toggle()) {
           div(class = "p-4", h3("This TF is filtered out"), p(filter_message()))
+          }
         } else {
           tagList(
             fluidRow(
@@ -78,14 +90,16 @@ DE_DR_DT_analysis_server <- function(id, selected_tf, is_active, colors_app) {
                   species_header("Human"),
                   styled_plot(ns("vulcano_DE_human"), height = "70vh"),
                   species_header("DE genes - Human", color_preset = "human"),
-                  styled_table(ns("DE_list_human"), height = "70vh", width = "90%")
+                  styled_table(ns("DE_list_human"),  width = "90%"),
+                  div(class = "species-spacer")
                 ),
                 column(
                   width = 6,
                   species_header("Cynomolgus"),
                   styled_plot(ns("vulcano_DE_cyno"), height = "70vh"),
                   species_header("DE genes - Cynomolgus", color_preset = "cynomolgus"),
-                  styled_table(ns("DE_list_cyno"), height = "70vh", width = "90%")
+                  styled_table(ns("DE_list_cyno"),  width = "90%"),
+                  div(class = "species-spacer")
                 )
               )
             ),
@@ -112,7 +126,8 @@ DE_DR_DT_analysis_server <- function(id, selected_tf, is_active, colors_app) {
                   width = 12,
                   styled_plot(ns("scatterplot_human_vs_cyno_lfc"), height = "70vh"),
                   uiOutput(ns("scatterplot_table_header")),
-                  styled_table(ns("DR_DT_DRG_list"), height = "70vh", width = "90%")
+                  styled_table(ns("DR_DT_DRG_list"),  width = "90%"),
+                  div(class = "species-spacer")
                 )
               )
             ),
@@ -151,7 +166,7 @@ DE_DR_DT_analysis_server <- function(id, selected_tf, is_active, colors_app) {
                     selected     = "whatever"
                   )
                 ),
-                column(width = 12, styled_table(ns("topgo_gene_selection"), height = "70vh")),
+                column(width = 12, styled_table(ns("topgo_gene_selection"))),
                 column(
                   width = 12,
                   div(
@@ -166,7 +181,7 @@ DE_DR_DT_analysis_server <- function(id, selected_tf, is_active, colors_app) {
                 column(
                   width = 12,
                   species_header("Most significant GO terms"),
-                  styled_table(ns("topgo_terms"), height = "70vh", width = "100%")
+                  styled_table(ns("topgo_terms"), width = "100%")
                 )
               )
             )
@@ -353,7 +368,7 @@ DE_DR_DT_analysis_server <- function(id, selected_tf, is_active, colors_app) {
         DT  = "DT genes",
         DRT = "DRT genes"
       )
-      species_header(label)
+      species_header(label, color_preset = "DR")
     })
     
     output$scatterplot_human_vs_cyno_lfc <- renderPlot({
@@ -549,6 +564,8 @@ DE_DR_DT_analysis_server <- function(id, selected_tf, is_active, colors_app) {
         incProgress(0.6, detail = "Rendering")
         
         if (!is.null(go_results)) {
+          print(go_results)
+          
           output$topgo_de_plot <- renderPlot({
             topgo_elim_plot(go_results, title = "")
           }, res = 250)

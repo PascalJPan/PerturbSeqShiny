@@ -1,5 +1,9 @@
-stacked_cell_type_barplot_plot <- function(seu, current_TF, ct_colors, species, text_size = 12) {
-
+stacked_cell_type_barplot_plot <- function(seu,
+                                           current_TF,
+                                           ct_colors,
+                                           species,
+                                           text_size = 12,
+                                           split_by_individual = FALSE) {
   ct_levels <- names(ct_colors)
   
   # 1) subset to species + keep only current_TF and NT_control
@@ -25,27 +29,63 @@ stacked_cell_type_barplot_plot <- function(seu, current_TF, ct_colors, species, 
     )
   }
   
-  # 2) count cells per (group, cell_type) and complete zeros
-  counts <- df %>%
-    dplyr::count(group, cell_type, name = "n") %>%
-    tidyr::complete(
-      group = factor(c(current_TF, "NT_control"),
-                     levels = c(current_TF, "NT_control")),
-      cell_type = factor(ct_levels, levels = ct_levels),
-      fill = list(n = 0)
-    )
+  if (split_by_individual) {
+    # Ensure 'individual' exists
+    if (!"individual" %in% colnames(df)) {
+      stop("Column 'individual' not found in meta.data. Set split_by_individual = FALSE or add this column.")
+    }
+    
+    # 2a) count per (individual, group, cell_type), complete zeros
+    indiv_levels <- unique(df$individual)
+    
+    counts <- df %>%
+      dplyr::count(group, individual, cell_type, name = "n") %>%
+      tidyr::complete(
+        group      = factor(c(current_TF, "NT_control"),
+                            levels = c(current_TF, "NT_control")),
+        individual = factor(indiv_levels, levels = indiv_levels),
+        cell_type  = factor(ct_levels, levels = ct_levels),
+        fill = list(n = 0)
+      )
+    
+    p <- ggplot(counts, aes(x = individual, y = n, fill = cell_type)) +
+      geom_col(position = "fill", width = 0.7) +
+      scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+      scale_fill_manual(values = ct_colors, breaks = ct_levels, name = "Cell type") +
+      labs(x = NULL, y = "Percent of cells") +
+      theme_minimal(base_size = text_size) +
+      theme(
+        #plot.title = element_text(face = "bold"),
+        axis.title.y = element_text(size = text_size),
+        panel.grid.major.x = element_blank(),
+        #strip.text = element_text(face = "bold"),
+        axis.text.x = element_text(size=8) #angle = 0, vjust = 0.5, hjust = 1, 
+      ) +
+      facet_grid(~ group)   
+  } else {
+    # 2b) count per (group, cell_type), complete zeros (original behavior)
+    counts <- df %>%
+      dplyr::count(group, cell_type, name = "n") %>%
+      tidyr::complete(
+        group     = factor(c(current_TF, "NT_control"),
+                           levels = c(current_TF, "NT_control")),
+        cell_type = factor(ct_levels, levels = ct_levels),
+        fill = list(n = 0)
+      )
+    
+    p <- ggplot(counts, aes(x = group, y = n, fill = cell_type)) +
+      geom_col(position = "fill", width = 0.7) +
+      scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+      scale_fill_manual(values = ct_colors, breaks = ct_levels, name = "Cell type") +
+      labs(x = NULL, y = "Percent of cells") +
+      theme_minimal(base_size = text_size) +
+      theme(
+        plot.title = element_text(face = "bold"),
+        axis.text.x = element_text(size = text_size),
+        axis.title.y = element_text(size = text_size),
+        panel.grid.major.x = element_blank()
+      )
+  }
   
-  # 3) stacked percent bars (two columns)
-  ggplot(counts, aes(x = group, y = n, fill = cell_type)) +
-    geom_col(position = "fill", width = 0.7) +
-    scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-    scale_fill_manual(values = ct_colors, breaks = ct_levels, name = "Cell type") +
-    labs(x = NULL, y = "Percent of cells") +
-    theme_minimal(base_size = text_size) +
-    theme(
-      plot.title = element_text(face = "bold"),
-      axis.text.x = element_text(size = text_size),
-      axis.title.y = element_text(size = text_size),
-      panel.grid.major.x = element_blank()
-    )
+  p
 }

@@ -58,7 +58,8 @@ grna_characteristics_server <- function(id, selected_tf, is_active, colors_app) 
           
           df <- gRNA_libraries %>% 
             filter(species == "human", perturbed_TF == selected_tf()) %>% 
-            select(gRNA,gRNA_sequence,position,strand)
+            mutate(chr = str_remove(seqnames, "^chr")) %>% 
+            select(gRNA,gRNA_sequence,position,strand,chr)
           
           DT::datatable(
             df,
@@ -68,7 +69,6 @@ grna_characteristics_server <- function(id, selected_tf, is_active, colors_app) 
               searching = FALSE, # disable search bar
               info = FALSE,    # remove "Showing x of y entries"
               lengthChange = FALSE,
-             
               scrollX = TRUE
             ),
             rownames = FALSE,
@@ -80,7 +80,8 @@ grna_characteristics_server <- function(id, selected_tf, is_active, colors_app) 
 
           df <- gRNA_libraries %>% 
             filter(species == "cynomolgus", perturbed_TF == selected_tf()) %>% 
-            select(gRNA,gRNA_sequence,position,strand)
+            mutate(chr = str_remove(seqnames, "^chr")) %>% 
+            select(gRNA,gRNA_sequence,position,strand,chr)
           
           DT::datatable(
             df,

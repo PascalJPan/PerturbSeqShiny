@@ -98,7 +98,7 @@ go_analysis_smart <- function (
   df$Term <- AnnotationDbi::Term(GO.db::GOTERM[df$GO.ID])
   df$Fisher.elim <- as.numeric(gsub("<", "", df$Fisher.elim))
   df$Term <- factor(df$Term, levels = unique(df$Term[order(df$Fisher.elim)]))
-  df$GeneRatio <- df$Significant / df$Annotated
+  df$GeneRatio <- round(df$Significant / df$Annotated,2)
   
   df <- df[df$Annotated >= min_background_genes & df$Significant >= min_interest_hits, , drop = FALSE]
   if (!is.null(pvalueCutoff)) df <- df[df$Fisher.elim <= pvalueCutoff, , drop = FALSE]

@@ -2,7 +2,8 @@ topgo_elim_plot <- function (GOdata, title, nodes = 10) {
   library(ggplot2)
   library(stringr)  
   
-  GOdata$Term <- factor(GOdata$Term, levels = rev(GOdata$Term))  
+  GOdata$Term <- factor(GOdata$Term, levels = GOdata$Term[order(GOdata$GeneRatio, decreasing = FALSE)])
+  
   
   plot <- ggplot(GOdata, aes(x = GeneRatio, y = Term)) +
     geom_point(aes(size = Significant, color = Fisher.elim)) +

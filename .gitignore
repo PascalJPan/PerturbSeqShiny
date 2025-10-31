@@ -9,7 +9,7 @@
 .DS_Store
 
 data
-
+perturbSeq_shiny.Rproj
 
 # renv (keep lockfile, ignore the library)
 renv/library/

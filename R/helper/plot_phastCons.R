@@ -9,7 +9,7 @@ plot_phastCons <- function(gn, gn_list, phastCons, color = "#D62728") {
       binwidth = 0.025, center = 0.0125
     ) +
     theme_bw(base_size = 13) +
-    labs(x = "meanCons", y = "Number of TFs")
+    labs(x = "mean phastCons across coding sequence", y = "Number of TFs")
   
   # Determine the maximum bin count for consistent line/label placement
   gb <- ggplot_build(p)

@@ -41,7 +41,7 @@ stemness_server <- function(id, selected_tf, is_active, colors_app = colors_app)
     })
     
     show_plots <- reactive({
-      is_TF_not_filtered_out(TF_filter_information, current_tf(), "F2")
+      is_TF_not_filtered_out(TF_filter_information, current_tf(), "F2.5")
     })
     
     filter_message <- reactive({
