@@ -1,9 +1,9 @@
 
 # perturbSeq_shiny
 
-⚠️ This app is part of an ongoing project. The required data is **not included in the repository** and the app is **not fully runnable** without internal datasets.
-
 An interactive Shiny application to explore results from a perturbation-based single-cell transcriptomics experiment in primate iPSCs.
+
+This app is part of an ongoing project. The required data is **not included in the repository** and the app is **not fully runnable** without internal datasets.
 
 ---
 
