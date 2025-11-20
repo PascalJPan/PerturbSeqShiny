@@ -86,7 +86,7 @@ If the raw data changes, rerun the scripts in `R/setup/` to regenerate `.rds` fi
 
 ## 🖼 Screenshots
 
-![TF Motif Example](./www/pngs/example_tf_motif.png)
+(not available yet)
 
 ---
 
