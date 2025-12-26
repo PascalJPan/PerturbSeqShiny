@@ -84,9 +84,19 @@ If the raw data changes, rerun the scripts in `R/setup/` to regenerate `.rds` fi
 
 ---
 
-## 🖼 Screenshots
+## 🖼️ Screenshots
 
-(not available yet)
+### Differential Expression (Human vs. Cynomolgus)
+![Volcano plots showing differential expression in human and cynomolgus iPSCs](docs/screenshots/volcano_de_human_cyno.png)
+
+### Conservation Analysis Across Transcription Factors
+![Permutation-based conservation scores across transcription factors](docs/screenshots/conservation_ranking.png)
+
+### Knockdown Efficiency per gRNA
+![Knockdown efficiency comparison between human and cynomolgus](docs/screenshots/knockdown_efficiency.png)
+
+### Cell Numbers per Species and gRNA
+![Cell counts per individual and gRNA](docs/screenshots/cell_numbers.png)
 
 ---
 
