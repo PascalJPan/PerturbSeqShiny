@@ -85,6 +85,7 @@ If the raw data changes, rerun the scripts in `R/setup/` to regenerate `.rds` fi
 ---
 
 ## 🖼️ Screenshots
+Here are some examplatory screenshots of the application. In total the application encompases roughly 50 individual plots and tables rendered depending on selected Transcription factors and user parameters.
 
 ### Differential Expression (Human vs. Cynomolgus)
 ![Volcano plots showing differential expression in human and cynomolgus iPSCs](docs/screenshots/volcano_de_human_cyno.png)
