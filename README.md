@@ -97,3 +97,30 @@ A full technical writeup is available here:
 
 Or preview the source:
 [perturbSeq_shiny_technical_overview.html](/mnt/data/4504670d-cfd1-4c67-ba51-29d8cd346ea0.png)
+
+## 👥 Authorship & Contributions
+
+This Shiny application was designed and implemented by **Pascal Stümpfl**, including:
+
+- Application architecture and modular Shiny design  
+- Interactive visualizations and UI/UX logic  
+- Data integration, caching strategies, and gating logic  
+
+### Data Analysis  
+The underlying data analysis was performed by:
+
+- **Fiona C. Edenhofer**  
+- **Anita Térmeg**  
+- **Beate Vieth**  
+- **Ines Hellmann**  
+- **Pascal Stümpfl**
+
+### Data Generation  
+- Single-cell perturbation data generation was carried out by **Fiona C. Edenhofer**.
+
+### Research Environment  
+This project was developed within the research environment of the **Hellmann–Enard Lab**, led by  
+**Ines Hellmann** and **Wolfgang Enard**.
+
+🔗 Lab website: https://www.humangenetik.bio.lmu.de/personen/hellmann-group/index.html
+
